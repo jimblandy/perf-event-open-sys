@@ -1,4 +1,4 @@
-## Direct, unsafe bindings for Linux's `perf_event_open` system call
+## Direct, unsafe Rust bindings for Linux's `perf_event_open` system call
 
 This crate exports `unsafe` Rust wrappers for Linux system calls for accessing
 performance monitoring counters and tracing facilities. This includes:
