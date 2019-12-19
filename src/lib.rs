@@ -1,3 +1,23 @@
+//! Direct, unsafe bindings for Linux [`perf_event_open`][man] and friends.
+//!
+//! Linux's `perf_event_open` system call provides access to the processor's
+//! performance measurement counters (things like instructions retired, cache
+//! misses, and so on), kernel counters (context switches, page faults), and
+//! many other sources of performance information.
+//!
+//! The Linux standard C library does not provide a binding for
+//! `perf_event_open` or its associated types and constants, so you can't get
+//! this function from the `libc` crate, as you would any other system call.
+//!
+//! Rust analogues to the C types and constants from `<linux/perf_event.h>` and
+//! `<linux/hw_breakpoint.h>`, generated with `bindgen`, are available in the
+//! [`bindings`](bindings/index.html) module.
+//!
+//! There are several ioctls for use with `perf_event_open` file descriptors;
+//! see the [`ioctls`](ioctls/index.html) module for those.
+//!
+//! [man]: http://man7.org/linux/man-pages/man2/perf_event_open.2.html
+
 pub mod bindings;
 
 use libc::pid_t;
@@ -5,11 +25,13 @@ use std::os::raw::{c_int, c_ulong};
 
 /// The `perf_event_open` system call.
 ///
-/// See the `perf_event_open(2)` man page for details.
+/// See the [`perf_event_open(2) man page`][man] for details.
 ///
 /// Note: The `attrs` argument needs to be a `*mut` because if the `size` field
 /// is too small or too large, the kernel writes the size it was expecing back
 /// into that field. It might do other things as well.
+///
+/// [man]: http://man7.org/linux/man-pages/man2/perf_event_open.2.html
 pub unsafe fn perf_event_open(
     attrs: *mut bindings::perf_event_attr,
     pid: pid_t,
@@ -29,6 +51,11 @@ pub unsafe fn perf_event_open(
 
 #[allow(dead_code, non_snake_case)]
 pub mod ioctls {
+    //! Ioctls for use with `perf_event_open` file descriptors.
+    //!
+    //! See the [`perf_event_open(2)`][man] man page for details.
+    //!
+    //! [man]: http://man7.org/linux/man-pages/man2/perf_event_open.2.html
     use crate::bindings::{self, perf_event_attr, perf_event_query_bpf};
     use std::os::raw::{c_char, c_int, c_ulong};
 
