@@ -57,7 +57,7 @@ pub mod ioctls {
     //!
     //! [man]: http://man7.org/linux/man-pages/man2/perf_event_open.2.html
     use crate::bindings::{self, perf_event_attr, perf_event_query_bpf};
-    use std::os::raw::{c_char, c_int, c_ulong};
+    use std::os::raw::{c_char, c_int, c_uint, c_ulong};
 
     macro_rules! define_ioctls {
         ( $( $args:tt )* ) => {
@@ -76,10 +76,10 @@ pub mod ioctls {
     }
 
     define_ioctls! {
-        { ENABLE, perf_event_ioctls_ENABLE, c_int }
-        { DISABLE, perf_event_ioctls_DISABLE, c_int }
+        { ENABLE, perf_event_ioctls_ENABLE, c_uint }
+        { DISABLE, perf_event_ioctls_DISABLE, c_uint }
         { REFRESH, perf_event_ioctls_REFRESH, c_int }
-        { RESET, perf_event_ioctls_RESET, c_int }
+        { RESET, perf_event_ioctls_RESET, c_uint }
         { PERIOD, perf_event_ioctls_PERIOD, u64 }
         { SET_OUTPUT, perf_event_ioctls_SET_OUTPUT, c_int }
         { SET_FILTER, perf_event_ioctls_SET_FILTER, *mut c_char }
