@@ -27,6 +27,9 @@ use std::os::raw::{c_int, c_ulong};
 ///
 /// See the [`perf_event_open(2) man page`][man] for details.
 ///
+/// On error, this returns a negated raw OS error value. The C `errno` value is
+/// not changed.
+///
 /// Note: The `attrs` argument needs to be a `*mut` because if the `size` field
 /// is too small or too large, the kernel writes the size it was expecing back
 /// into that field. It might do other things as well.
@@ -54,6 +57,8 @@ pub mod ioctls {
     //! Ioctls for use with `perf_event_open` file descriptors.
     //!
     //! See the [`perf_event_open(2)`][man] man page for details.
+    //!
+    //! On error, these return `-1` and set the C `errno` value.
     //!
     //! [man]: http://man7.org/linux/man-pages/man2/perf_event_open.2.html
     use crate::bindings::{self, perf_event_attr, perf_event_query_bpf};
