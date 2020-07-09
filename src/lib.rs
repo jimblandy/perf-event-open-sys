@@ -16,6 +16,13 @@
 //! There are several ioctls for use with `perf_event_open` file descriptors;
 //! see the [`ioctls`](ioctls/index.html) module for those.
 //!
+//! ### Kernel versions
+//!
+//! The bindings in this crate are generated from structures compatible back to
+//! Linux 4.1: the `perf_event_attr` type is 112 bytes long, which is
+//! `PERF_ATTR_SIZE_VER5`. If you need features available only in newer versions
+//! of the type, please file an issue.
+//!
 //! [man]: http://man7.org/linux/man-pages/man2/perf_event_open.2.html
 
 pub mod bindings;
