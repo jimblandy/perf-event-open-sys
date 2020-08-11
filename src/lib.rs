@@ -107,6 +107,10 @@ pub mod ioctls {
         ioctl: bindings::perf_event_ioctls,
         arg: A,
     ) -> c_int {
+        #[cfg(target_env = "musl")]
+        return libc::ioctl(fd, ioctl as c_int, arg);
+
+        #[cfg(not(target_env = "musl"))]
         libc::ioctl(fd, ioctl as c_ulong, arg)
     }
 }
