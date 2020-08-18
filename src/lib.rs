@@ -18,10 +18,17 @@
 //!
 //! ### Kernel versions
 //!
-//! The bindings in this crate are generated from structures compatible back to
-//! Linux 4.1: the `perf_event_attr` type is 112 bytes long, which is
-//! `PERF_ATTR_SIZE_VER5`. If you need features available only in newer versions
-//! of the type, please file an issue.
+//! The bindings in this crate are generated from the Linux kernel headers
+//! packaged by Fedora as `kernel-headers-5.6.11-100.fc30.x86_64`, which
+//! corresponds to `PERF_EVENT_ATTR_SIZE_VER6`.
+//!
+//! If you need features available only in newer versions of the type, please
+//! file an issue.
+//!
+//! Note that the `perf_event_open` system call interface is designed to cope
+//! with receiving `perf_event_attr` structures from both older and newer
+//! versions of the kernel. The system call fails only if the structure requests
+//! functionality that the running kernel does not actually support.
 //!
 //! [man]: http://man7.org/linux/man-pages/man2/perf_event_open.2.html
 
