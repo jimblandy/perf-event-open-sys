@@ -5,16 +5,57 @@
 //! misses, and so on), kernel counters (context switches, page faults), and
 //! many other sources of performance information.
 //!
-//! The Linux standard C library does not provide a binding for
-//! `perf_event_open` or its associated types and constants, so you can't get
-//! this function from the `libc` crate, as you would any other system call.
+//! You can't get the `perf_event_open` function from the `libc` crate, as you
+//! would any other system call. The Linux standard C library does not provide a
+//! binding for this function or its associated types and constants.
 //!
-//! Rust analogues to the C types and constants from `<linux/perf_event.h>` and
+//! Rust analogs to the C types and constants from `<linux/perf_event.h>` and
 //! `<linux/hw_breakpoint.h>`, generated with `bindgen`, are available in the
-//! [`bindings`](bindings/index.html) module.
+//! [`bindings`] module.
 //!
 //! There are several ioctls for use with `perf_event_open` file descriptors;
-//! see the [`ioctls`](ioctls/index.html) module for those.
+//! see the [`ioctls`] module for those.
+//!
+//! ## Using the raw API
+//!
+//! All the struct and union types from the [`bindings`] module implement the
+//! `Default` trait by zeroing the entire struct. This works nicely with Linux
+//! system call conventions. Over time, as a kernel interface evolves, its
+//! structs get new fields added to them. As a general principle, a newly added
+//! field is always placed at the end of the struct, and is defined to have no
+//! effect if its value is zero. So, using this crate, if you produce a struct
+//! using its `Default::default` method and then initialize only the fields you
+//! need, your code should continue to compile even as newer versions of this
+//! crate are updated for newer versions of the kernel interface.
+//!
+//! For example:
+//!
+//! ```
+//! use perf_event_open_sys as sys;
+//!
+//! let mut attrs = sys::bindings::perf_event_attr::default();
+//!
+//! attrs.size = std::mem::size_of::<sys::bindings::perf_event_attr>() as u32;
+//! attrs.type_ = sys::bindings::perf_type_id_PERF_TYPE_HARDWARE;
+//! attrs.config = sys::bindings::perf_hw_id_PERF_COUNT_HW_INSTRUCTIONS as u64;
+//! attrs.set_disabled(1);
+//! attrs.set_exclude_kernel(1);
+//! attrs.set_exclude_hv(1);
+//!
+//! let result = unsafe {
+//!     sys::perf_event_open(&mut attrs, 0, -1, -1, 0)
+//! };
+//!
+//! if result < 0 {
+//!     // ... handle error
+//! }
+//!
+//! // ... use `result` as a raw file descriptor
+//! ```
+//!
+//! You can find one example of using `perf_event_open` in the [`perf_event`]
+//! crate, which provides a safe interface to a subset of `perf_event_open`'s
+//! functionality.
 //!
 //! ### Kernel versions
 //!
@@ -22,15 +63,25 @@
 //! packaged by Fedora as `kernel-headers-5.6.11-100.fc30.x86_64`, which
 //! corresponds to `PERF_EVENT_ATTR_SIZE_VER6`.
 //!
-//! If you need features available only in newer versions of the type, please
-//! file an issue.
+//! It should always be acceptable (again, bugs aside) to regenerate this
+//! crate's bindings from a newer kernel. As explained above, bugs aside, it is
+//! not necessary to use the version of these structures that matches the kernel
+//! you want to run under. The system call interface is designed so that older
+//! kernels can handle newer structs, and vice versa. The system call fails only
+//! if the structure requests functionality that the running kernel does not
+//! actually support.
 //!
-//! Note that the `perf_event_open` system call interface is designed to cope
-//! with receiving `perf_event_attr` structures from both older and newer
-//! versions of the kernel. The system call fails only if the structure requests
-//! functionality that the running kernel does not actually support.
+//! Users of this crate should be using the `default` method to initialize
+//! structs, as documented above, so new fields should not break properly
+//! written code.
 //!
+//! If you need features available only in a more recent version of the type
+//! than this crate provides, please file an issue.
+//!
+//! [`bindings`]: bindings/index.html
+//! [`ioctls`]: ioctls/index.html
 //! [man]: http://man7.org/linux/man-pages/man2/perf_event_open.2.html
+//! [`perf_event`]: https://crates.io/crates/perf_event
 
 pub mod bindings;
 

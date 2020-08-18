@@ -21,3 +21,23 @@ operate on raw pointers and raw file descriptors.
 For a type-safe API for basic functionality, see the [perf-event] crate.
 
 [perf-event]: https://crates.io/crates/perf-event
+
+### Updating the System Call Bindings
+
+The `bindings` module defines Rust equivalents for the types and constants used
+by the Linux `perf_event_open` system call and its related ioctls. These are
+generated automatically using [bindgen] from the kernel's C header files. Both
+the interface and the underlying functionality are quite complex, and new
+features are added at a steady pace. As explained in the module documentation,
+regenerating the bindings as needed should not break downstream crates if they
+are written properly.
+
+To update the generated bindings, run the `regenerate.sh` script, found in the
+same directory as this `README.md` file. This runs bindgen and splices its
+output in the `bindings` module's source code, preserving the documentation.
+
+Please also fix the comments in `src/lib.rs` explaining exactly which version of
+the kernel headers you generated the bindings from.
+
+[bindgen]: https://crates.io/crates/bindgen
+
