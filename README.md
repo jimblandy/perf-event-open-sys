@@ -26,18 +26,22 @@ For a type-safe API for basic functionality, see the [perf-event] crate.
 
 The `bindings` module defines Rust equivalents for the types and constants used
 by the Linux `perf_event_open` system call and its related ioctls. These are
-generated automatically using [bindgen] from the kernel's C header files. Both
+generated automatically from the kernel's C header files, using [bindgen]. Both
 the interface and the underlying functionality are quite complex, and new
-features are added at a steady pace. As explained in the module documentation,
-regenerating the bindings as needed should not break downstream crates if they
-are written properly.
+features are added at a steady pace. To update the generated bindings:
 
-To update the generated bindings, run the `regenerate.sh` script, found in the
-same directory as this `README.md` file. This runs bindgen and splices its
-output in the `bindings` module's source code, preserving the documentation.
+-   Run the `regenerate.sh` script, found in the same directory as this
+    `README.md` file. This runs bindgen and splices its output in the `bindings`
+    module's source code, preserving the documentation.
 
-Please also fix the comments in `src/lib.rs` explaining exactly which version of
-the kernel headers you generated the bindings from.
+-   Fix the comments in `src/lib.rs` explaining exactly which version of the
+    kernel headers you generated the bindings from.
+
+-   Update the crate's major version. Newer versions of the kernel headers may
+    add fields to structs, which is a breaking change. (As explained in the
+    module documentation, properly written user crates should not be affected,
+    but it seems unnecessary to risk `cargo update` breaking builds. When users
+    need new functionality from the bindings, they can update the major version
+    number of this crate they request.)
 
 [bindgen]: https://crates.io/crates/bindgen
-

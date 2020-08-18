@@ -18,23 +18,20 @@
 //!
 //! ## Using the raw API
 //!
-//! All the struct and union types from the [`bindings`] module implement the
-//! `Default` trait by zeroing the entire struct. This works nicely with Linux
-//! system call conventions. Over time, as a kernel interface evolves, its
-//! structs get new fields added to them. As a general principle, a newly added
-//! field is always placed at the end of the struct, and is defined to have no
-//! effect if its value is zero. So, using this crate, if you produce a struct
-//! using its `Default::default` method and then initialize only the fields you
-//! need, your code should continue to compile even as newer versions of this
-//! crate are updated for newer versions of the kernel interface.
-//!
-//! For example:
+//! As the kernel interface evolves, the struct and union types from the
+//! [`bindings`] module may acquire new fields. To ensure that your code will
+//! continue to compile against newer versions of this crate, you should
+//! construct values of these types by calling their `Default` implementations,
+//! which return zero-filled values, and then assigning to the fields you care
+//! about. For example:
 //!
 //! ```
 //! use perf_event_open_sys as sys;
 //!
+//! // Construct a zero-filled `perf_event_attr`.
 //! let mut attrs = sys::bindings::perf_event_attr::default();
 //!
+//! // Populate the fields we need.
 //! attrs.size = std::mem::size_of::<sys::bindings::perf_event_attr>() as u32;
 //! attrs.type_ = sys::bindings::perf_type_id_PERF_TYPE_HARDWARE;
 //! attrs.config = sys::bindings::perf_hw_id_PERF_COUNT_HW_INSTRUCTIONS as u64;
@@ -42,6 +39,7 @@
 //! attrs.set_exclude_kernel(1);
 //! attrs.set_exclude_hv(1);
 //!
+//! // Make the system call.
 //! let result = unsafe {
 //!     sys::perf_event_open(&mut attrs, 0, -1, -1, 0)
 //! };
@@ -53,6 +51,51 @@
 //! // ... use `result` as a raw file descriptor
 //! ```
 //!
+//! It is not necessary to adjust `size` to what the running kernel expects:
+//! older kernels can accept newer `perf_event_attr` structs, and vice versa.
+//! The kernel simply checks that any fields it doesn't know about are zero, and
+//! pads smaller-than-expected structs with zeros.
+//!
+//! If the `size` field was properly initialized, an error result of `E2BIG`
+//! indicates that the `attrs` structure has requested behavior the kernel is
+//! too old to support. When this error code is returned, the kernel writes the
+//! size it expected back to the `size` field of the `attrs` struct.
+//!
+//! This approach works nicely with Linux system call conventions. As a general
+//! principle, old fields are never removed from a struct, for backwards
+//! compatibility. New fields are always added to the end, and are defined to
+//! have no effect when their value is zero. Each system call indicates, through
+//! one means or another, the size of the struct being passed (in the case of
+//! `perf_event_attr`, the `size` field does this), and this size is used to
+//! indicate which version of the API userspace thinks it's using. There are
+//! three cases:
+//!
+//! -   The kernel's own definition of the struct has the same size as the
+//!     struct passed from userspace. This means that userspace is using the
+//!     same version of the header files as the kernel, so all is well.
+//!
+//! -   The kernel's struct is larger than the one passed from userspace. This
+//!     means the kernel is newer than the userspace program. The kernel copies
+//!     the userspace data into the initial bytes of its own struct, and zeros
+//!     the remaining bytes. Since zeroed fields have no effect, the resulting
+//!     struct properly reflects the user's intent.
+//!
+//! -   The kernel's struct is smaller than the one passed from userspace. This
+//!     means that an executable built on a newer kernel is running on an older
+//!     kernel. The kernel checks that the excess bytes in the userspace struct
+//!     are all zero; if they are not, the system call returns `E2BIG`,
+//!     indicating that userspace has requested a feature the kernel doesn't
+//!     support. If they are all zero, then the kernel initializes its own
+//!     struct with the bytes from the start of the userspace struct, and drops
+//!     the rest. Since the dropped bytes were all zero, they did not affect the
+//!     requested behavior, and the resulting struct reflects the user's intent.
+//!
+//! This approach is explained by the kernel comments for
+//! `copy_struct_from_user` in `include/linux/uaccess.h`. The upshot is that
+//! older code can run against newer kernels and vice versa, and errors are only
+//! returned when the call actually requests functionality that the kernel
+//! doesn't support.
+//!
 //! You can find one example of using `perf_event_open` in the [`perf_event`]
 //! crate, which provides a safe interface to a subset of `perf_event_open`'s
 //! functionality.
@@ -63,20 +106,18 @@
 //! packaged by Fedora as `kernel-headers-5.6.11-100.fc30.x86_64`, which
 //! corresponds to `PERF_EVENT_ATTR_SIZE_VER6`.
 //!
-//! It should always be acceptable (again, bugs aside) to regenerate this
-//! crate's bindings from a newer kernel. As explained above, bugs aside, it is
-//! not necessary to use the version of these structures that matches the kernel
-//! you want to run under. The system call interface is designed so that older
-//! kernels can handle newer structs, and vice versa. The system call fails only
-//! if the structure requests functionality that the running kernel does not
-//! actually support.
+//! As explained above, bugs aside, it is not necessary to use the version of
+//! these structures that matches the kernel you want to run under, so it should
+//! always be acceptable to use the latest version of this crate, even if you
+//! want to support older kernels.
 //!
-//! Users of this crate should be using the `default` method to initialize
-//! structs, as documented above, so new fields should not break properly
-//! written code.
+//! This crate's `README.md` file includes instructions on regenerating the
+//! bindings from newer kernel headers. However, this can be a breaking change
+//! for users that have not followed the advice above, so regeneration should
+//! cause a major version increment.
 //!
-//! If you need features available only in a more recent version of the type
-//! than this crate provides, please file an issue.
+//! If you need features that are available only in a more recent version of the
+//! types than this crate provides, please file an issue.
 //!
 //! [`bindings`]: bindings/index.html
 //! [`ioctls`]: ioctls/index.html
