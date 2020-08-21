@@ -16,6 +16,9 @@
 //! There are several ioctls for use with `perf_event_open` file descriptors;
 //! see the [`ioctls`] module for those.
 //!
+//! For a safe and convenient interface to this functionality, see the
+//! [`perf_event`] crate.
+//!
 //! ## Using the raw API
 //!
 //! As the kernel interface evolves, the struct and union types from the
@@ -52,55 +55,19 @@
 //! ```
 //!
 //! It is not necessary to adjust `size` to what the running kernel expects:
-//! older kernels can accept newer `perf_event_attr` structs, and vice versa.
-//! The kernel simply checks that any fields it doesn't know about are zero, and
-//! pads smaller-than-expected structs with zeros.
+//! older kernels can accept newer `perf_event_attr` structs, and vice versa. As
+//! long as the `size` field was properly initialized, an error result of
+//! `E2BIG` indicates that the `attrs` structure has requested behavior the
+//! kernel is too old to support.
 //!
-//! If the `size` field was properly initialized, an error result of `E2BIG`
-//! indicates that the `attrs` structure has requested behavior the kernel is
-//! too old to support. When this error code is returned, the kernel writes the
-//! size it expected back to the `size` field of the `attrs` struct.
+//! When `E2BIG` is returned, the kernel writes the size it expected back to the
+//! `size` field of the `attrs` struct. Again, if you want to retry the call, it
+//! is not necessary to adjust the size you pass to match what the kernel passed
+//! back. The size from the kernel just indicates which version of the API the
+//! kernel supports; see the documentation for the `PERF_EVENT_ATTR_SIZE_VER...`
+//! constants for details.
 //!
-//! This approach works nicely with Linux system call conventions. As a general
-//! principle, old fields are never removed from a struct, for backwards
-//! compatibility. New fields are always added to the end, and are defined to
-//! have no effect when their value is zero. Each system call indicates, through
-//! one means or another, the size of the struct being passed (in the case of
-//! `perf_event_attr`, the `size` field does this), and this size is used to
-//! indicate which version of the API userspace thinks it's using. There are
-//! three cases:
-//!
-//! -   The kernel's own definition of the struct has the same size as the
-//!     struct passed from userspace. This means that userspace is using the
-//!     same version of the header files as the kernel, so all is well.
-//!
-//! -   The kernel's struct is larger than the one passed from userspace. This
-//!     means the kernel is newer than the userspace program. The kernel copies
-//!     the userspace data into the initial bytes of its own struct, and zeros
-//!     the remaining bytes. Since zeroed fields have no effect, the resulting
-//!     struct properly reflects the user's intent.
-//!
-//! -   The kernel's struct is smaller than the one passed from userspace. This
-//!     means that an executable built on a newer kernel is running on an older
-//!     kernel. The kernel checks that the excess bytes in the userspace struct
-//!     are all zero; if they are not, the system call returns `E2BIG`,
-//!     indicating that userspace has requested a feature the kernel doesn't
-//!     support. If they are all zero, then the kernel initializes its own
-//!     struct with the bytes from the start of the userspace struct, and drops
-//!     the rest. Since the dropped bytes were all zero, they did not affect the
-//!     requested behavior, and the resulting struct reflects the user's intent.
-//!
-//! This approach is explained by the kernel comments for
-//! `copy_struct_from_user` in `include/linux/uaccess.h`. The upshot is that
-//! older code can run against newer kernels and vice versa, and errors are only
-//! returned when the call actually requests functionality that the kernel
-//! doesn't support.
-//!
-//! You can find one example of using `perf_event_open` in the [`perf_event`]
-//! crate, which provides a safe interface to a subset of `perf_event_open`'s
-//! functionality.
-//!
-//! ### Kernel versions
+//! ## Kernel versions
 //!
 //! The bindings in this crate are generated from the Linux kernel headers
 //! packaged by Fedora as `kernel-headers-5.6.11-100.fc30.x86_64`, which
@@ -118,6 +85,84 @@
 //!
 //! If you need features that are available only in a more recent version of the
 //! types than this crate provides, please file an issue.
+//!
+//! ## Linux API Backward/Forward Compatibility Strategy
+//!
+//! (This is more detail than necessary if you just want to use the crate. I
+//! want to write this down somewhere so that I have something to refer to when
+//! I forget the details.)
+//!
+//! It is an important principle of Linux kernel development that new versions
+//! of the kernel should not break userspace. If upgrading your kernel breaks a
+//! user program, then that's a bug in the kernel. (This refers to the run-time
+//! interface. I don't know what the stability rules are for the kernel headers:
+//! can new headers cause old code to fail to compile? Anyway, run time is our
+//! concern here.)
+//!
+//! But when you have an open-ended, complex system call like `perf_event_open`,
+//! it's really important for the interface to be able to evolve. Certainly, old
+//! programs must run properly on new kernels, but ideally, it should work the
+//! other way, too: a program built against a newer version of the kernel
+//! headers should run on an older kernel, as long as it only requests features
+//! the old kernel actually supports. That is, simply compiling against newer
+//! headers should not be disqualifying - only using those new headers to
+//! request features the running kernel can't provide should cause an error.
+//!
+//! Consider the specific case of passing a struct like `perf_event_attr` to a
+//! system call like `perf_event_open`. In general, there are two versions of
+//! the struct in play: the version the user program was compiled against, and
+//! the version the running kernel was compiled against. How can we let old
+//! programs call `perf_event_open` on new kernels, and vice versa?
+//!
+//! Linux has a neat strategy for making this work. There are four rules:
+//!
+//! -   Every system call that passes a struct to the kernel includes some
+//!     indication of how large userspace thinks that struct is. For
+//!     `perf_event_open`, it's the `size` field of the `perf_event_attr`
+//!     struct. For `ioctl`s that pass a struct, it's a bitfield of the
+//!     `request` value.
+//!
+//! -   Fields are never deleted from structs. At most, newer kernel headers may
+//!     rename them to '__reserved_foo' or something like that, but once a field
+//!     has been placed, its layout in the struct never changes.
+//!
+//! -   New fields are added to the end of structs.
+//!
+//! -   New fields' semantics are chosen such that filling them with zeros
+//!     preserves the old behavior. That is, turning an old struct into a new
+//!     struct by extending it with zero bytes should always give you a new
+//!     struct with the same meaning the old struct had.
+//!
+//! Then, the kernel's strategy for receiving structs from userspace (explained
+//! by the kernel comments for `copy_struct_from_user` in
+//! `include/linux/uaccess.h`) is as follows:
+//!
+//! -   If the kernel's struct is larger than the one passed from userspace,
+//!     then that means the kernel is newer than the userspace program. The
+//!     kernel copies the userspace data into the initial bytes of its own
+//!     struct, and zeros the remaining bytes. Since zeroed fields have no
+//!     effect, the resulting struct properly reflects the user's intent.
+//!
+//! -   If the kernel's struct is smaller than the one passed from userspace,
+//!     then that means that a userspace program compiled against newer kernel
+//!     headers is running on an older kernel. The kernel checks that the excess
+//!     bytes in the userspace struct are all zero; if they are not, the system
+//!     call returns `E2BIG`, indicating that userspace has requested a feature
+//!     the kernel doesn't support. If they are all zero, then the kernel
+//!     initializes its own struct with the bytes from the start of the
+//!     userspace struct, and drops the rest. Since the dropped bytes were all
+//!     zero, they did not affect the requested behavior, and the resulting
+//!     struct reflects the user's intent.
+//!
+//! -   In either case, the kernel verifies that any `__reserved_foo` fields in
+//!     its own version of the struct are zero.
+//!
+//! This covers both the old-on-new and new-on-old cases, and returns an error
+//! only when the call requests functionality the kernel doesn't support.
+//!
+//! You can find one example of using `perf_event_open` in the [`perf_event`]
+//! crate, which provides a safe interface to a subset of `perf_event_open`'s
+//! functionality.
 //!
 //! [`bindings`]: bindings/index.html
 //! [`ioctls`]: ioctls/index.html
