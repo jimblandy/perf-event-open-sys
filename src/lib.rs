@@ -106,7 +106,7 @@
 //! headers should run on an older kernel, as long as it only requests features
 //! the old kernel actually supports. That is, simply compiling against newer
 //! headers should not be disqualifying - only using those new headers to
-//! request features the running kernel can't provide should cause an error.
+//! request new features the running kernel can't provide should cause an error.
 //!
 //! Consider the specific case of passing a struct like `perf_event_attr` to a
 //! system call like `perf_event_open`. In general, there are two versions of
@@ -123,7 +123,7 @@
 //!     `request` value.
 //!
 //! -   Fields are never deleted from structs. At most, newer kernel headers may
-//!     rename them to '__reserved_foo' or something like that, but once a field
+//!     rename them to `__reserved_foo` or something like that, but once a field
 //!     has been placed, its layout in the struct never changes.
 //!
 //! -   New fields are added to the end of structs.
@@ -131,11 +131,11 @@
 //! -   New fields' semantics are chosen such that filling them with zeros
 //!     preserves the old behavior. That is, turning an old struct into a new
 //!     struct by extending it with zero bytes should always give you a new
-//!     struct with the same meaning the old struct had.
+//!     struct with the same meaning as the old struct.
 //!
-//! Then, the kernel's strategy for receiving structs from userspace (explained
-//! by the kernel comments for `copy_struct_from_user` in
-//! `include/linux/uaccess.h`) is as follows:
+//! Then, the kernel's strategy for receiving structs from userspace is as
+//! follows (according to the comments for `copy_struct_from_user` in
+//! the kernel source `include/linux/uaccess.h`):
 //!
 //! -   If the kernel's struct is larger than the one passed from userspace,
 //!     then that means the kernel is newer than the userspace program. The
