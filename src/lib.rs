@@ -251,10 +251,10 @@ pub mod ioctls {
         ioctl: bindings::perf_event_ioctls,
         arg: A,
     ) -> c_int {
-        #[cfg(target_env = "musl")]
+        #[cfg(any(target_env = "musl", target_os = "android"))]
         return libc::ioctl(fd, ioctl as c_int, arg);
 
-        #[cfg(not(target_env = "musl"))]
+        #[cfg(not(any(target_env = "musl", target_os = "android")))]
         libc::ioctl(fd, ioctl as c_ulong, arg)
     }
 }
