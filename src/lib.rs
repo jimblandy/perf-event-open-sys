@@ -70,8 +70,8 @@
 //! ## Kernel versions
 //!
 //! The bindings in this crate are generated from the Linux kernel headers
-//! packaged by Fedora as `kernel-headers-5.6.11-100.fc30.x86_64`, which
-//! corresponds to `PERF_EVENT_ATTR_SIZE_VER6`.
+//! packaged by Fedora as `kernel-headers-5.17.6-300.fc36.x86_64`, which
+//! corresponds to `PERF_EVENT_ATTR_SIZE_VER7`.
 //!
 //! As explained above, bugs aside, it is not necessary to use the version of
 //! these structures that matches the kernel you want to run under, so it should

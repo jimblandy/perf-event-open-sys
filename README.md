@@ -31,8 +31,8 @@ the interface and the underlying functionality are quite complex, and new
 features are added at a steady pace. To update the generated bindings:
 
 -   Run the `regenerate.sh` script, found in the same directory as this
-    `README.md` file. This runs bindgen and splices its output in the `bindings`
-    module's source code, preserving the documentation.
+    `README.md` file. This runs bindgen and splices its output into the
+    `bindings` module's source code, preserving the documentation.
 
 -   Fix the comments in `src/lib.rs` explaining exactly which version of the
     kernel headers you generated the bindings from.

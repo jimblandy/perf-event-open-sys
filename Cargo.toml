@@ -1,6 +1,6 @@
 [package]
 name = "perf-event-open-sys"
-version = "1.0.1"
+version = "2.0.0"
 authors = ["Jim Blandy <jimb@red-bean.com>"]
 repository = "https://github.com/jimblandy/perf-event-open-sys.git"
 license = "MIT OR Apache-2.0"
