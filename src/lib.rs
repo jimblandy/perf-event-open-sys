@@ -185,6 +185,12 @@ use std::os::raw::{c_int, c_ulong};
 /// is too small or too large, the kernel writes the size it was expecing back
 /// into that field. It might do other things as well.
 ///
+/// # Safety
+///
+/// The `attrs` argument must point to a properly initialized
+/// `perf_event_attr` struct. The measurements and other behaviors its
+/// contents request must be safe.
+///
 /// [man]: http://man7.org/linux/man-pages/man2/perf_event_open.2.html
 pub unsafe fn perf_event_open(
     attrs: *mut bindings::perf_event_attr,
@@ -225,6 +231,7 @@ pub mod ioctls {
 
     macro_rules! define_ioctl {
         ({ $name:ident, $ioctl:ident, $arg_type:ty }) => {
+            #[allow(clippy::missing_safety_doc)]
             pub unsafe fn $name(fd: c_int, arg: $arg_type) -> c_int {
                 untyped_ioctl(fd, bindings::$ioctl, arg)
             }
