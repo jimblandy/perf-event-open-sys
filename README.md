@@ -1,3 +1,8 @@
+# ARCHIVED
+
+This crate has been combined into a workspace with `perf-event`, so
+future development of this code will take place in https://github.com/jimblandy/perf-event.
+
 ## Direct, unsafe Rust bindings for Linux's `perf_event_open` system call
 
 This crate exports `unsafe` Rust wrappers for Linux system calls for accessing
